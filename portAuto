@@ -234,7 +234,7 @@ def _parse_raw_neighbor(data):
 
     # Parse the data to find neighbor system name
     name = _search(data, r'System\s+Name:\s+?\"(\S+)\"')
-    neighbor['neighborDevice'] = name.group(1) if name else ''
+    neighbor['neighborDevice'] = name.group(1).split('.')[0] if name else ''
 
     # Parse the data to find neighbor system description
     desc = _search(data, r'System\s+Description:\s+\"(.*)\"\n')
