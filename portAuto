@@ -170,16 +170,19 @@ def get_lldp_info(eapi):
 
     # Build a dictionary keyed by local interfaces.
     for intf in local_interfaces:
+
         # Run lldp neighbors detail against specific interfaces to limit output
         raw_detail = _get_lldp_detail(eapi, intf)
         # Remove the first item in the array - useless info
         unique_neighbors = raw_detail.split('\n\n')[1:]
+
 
         # Look through all of the raw output and scrape.
         for neigh in unique_neighbors:
             output = _parse_raw_neighbor(neigh)
             if output:
                 output['port'] = intf
+                output['staticDescription'] = get_static_description(eapi, intf)
                 lldp_info.append(output)
 
     return lldp_info
@@ -199,8 +202,15 @@ def _get_lldp_detail(eapi, intf):
     return run_cmds(eapi, ['show lldp neighbors %s detail' % intf],
                            format='text')[0]['output']
 
-def get_current_description(eapi):
-    pass
+def get_static_description(eapi, intf):
+    '''Use the JSON output of show interface ethernet XX description
+       to check for an existing description. If delineated by a set value,
+       preserve the existing value before updating.
+    '''
+    delim = '***'
+    output = run_cmds(eapi, ['show interfaces %s description' % intf], format='json')[0]
+    description =str.split(output['interfaceDescriptions'][intf]['description'], delim)[0]
+    return  description
 
 
 def _search(data, regex):
@@ -284,14 +294,16 @@ def main():
 
     log(neighbors)
 
-    # for i in neighbors:
-    #     localIntf = i['port']
-    #     intfDesc = '*** Link to %s(%s)' % (i['neighborDevice'],
-    #                                        i['neighborPort'])
-    #     rc = run_cmds(eapi, ['enable',
-    #                          'configure',
-    #                          'interface %s' % localIntf,
-    #                          'description %s' % intfDesc])
+    for i in neighbors:
+        localIntf = i['port']
+        intfDesc = '%s*** Link to %s(%s)' % (i['staticDescription'],
+                                              i['neighborDevice'],
+                                              i['neighborPort'])
+
+        rc = run_cmds(eapi, ['enable',
+                             'configure',
+                             'interface %s' % localIntf,
+                             'description %s' % intfDesc])
 
 if __name__ == '__main__':
    main()

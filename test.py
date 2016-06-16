@@ -170,14 +170,18 @@ def get_lldp_info(eapi):
 
     # Build a dictionary keyed by local interfaces.
     for intf in local_interfaces:
+        # Return Existing static interface description
+        static_description = get_current_description(eapi, intf)
+
         # Run lldp neighbors detail against specific interfaces to limit output
         raw_detail = _get_lldp_detail(eapi, intf)
         # Remove the first item in the array - useless info
         unique_neighbors = raw_detail.split('\n\n')[1:]
 
+
         # Look through all of the raw output and scrape.
         for neigh in unique_neighbors:
-            output = _parse_raw_neighbor(neigh)
+            output = _parse_raw_neighbor(neigh, static_description)
             if output:
                 output['port'] = intf
                 lldp_info.append(output)
@@ -199,16 +203,14 @@ def _get_lldp_detail(eapi, intf):
     return run_cmds(eapi, ['show lldp neighbors %s detail' % intf],
                            format='text')[0]['output']
 
-def get_current_description(eapi):
+def get_current_description(eapi, intf):
     '''Use the JSON output of show interface ethernet XX description
        to check for an existing description. If delineated by a set value,
        preserve the existing value before updating.
     '''
-    intf = 'Ethernet1'
     delim = '***'
     output = run_cmds(eapi, ['show interfaces %s description' % intf], format='json')[0]
     description =str.split(output['interfaceDescriptions'][intf]['description'], delim)[0]
-
     return  description
 
 
@@ -221,7 +223,7 @@ def _search(data, regex):
         else:
             return None
 
-def _parse_raw_neighbor(data):
+def _parse_raw_neighbor(data, static_description):
 
     if not data:
         return
@@ -284,6 +286,9 @@ def _parse_raw_neighbor(data):
     max_frame = _search(data, r'Maximum\s+Frame\s+Size:\s+(\d+)\s+bytes')
     neighbor['neighborMaxFrameSize'] = max_frame.group(1) if max_frame else ''
 
+    # Parse the  Static Description
+    neighbor['staticDescription'] = static_description
+
     return neighbor
 
 def main():
@@ -293,14 +298,16 @@ def main():
 
     log(neighbors)
 
-    # for i in neighbors:
-    #     localIntf = i['port']
-    #     intfDesc = '*** Link to %s(%s)' % (i['neighborDevice'],
-    #                                        i['neighborPort'])
-    #     rc = run_cmds(eapi, ['enable',
-    #                          'configure',
-    #                          'interface %s' % localIntf,
-    #                          'description %s' % intfDesc])
+    for i in neighbors:
+        localIntf = i['port']
+        intfDesc = '%s*** Link to %s(%s)' % (i['staticDescription'],
+                                              i['neighborDevice'],
+                                              i['neighborPort'])
+
+        rc = run_cmds(eapi, ['enable',
+                             'configure',
+                             'interface %s' % localIntf,
+                             'description %s' % intfDesc])
 
 if __name__ == '__main__':
    main()
