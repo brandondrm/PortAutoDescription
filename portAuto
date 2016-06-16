@@ -296,7 +296,7 @@ def main():
 
     for i in neighbors:
         localIntf = i['port']
-        intfDesc = '%s*** Link to %s(%s)' % (i['staticDescription'],
+        intfDesc = '%s *** Link to %s(%s)' % (i['staticDescription'],
                                               i['neighborDevice'],
                                               i['neighborPort'])
 
