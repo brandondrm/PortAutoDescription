@@ -200,7 +200,16 @@ def _get_lldp_detail(eapi, intf):
                            format='text')[0]['output']
 
 def get_current_description(eapi):
-    pass
+    '''Use the JSON output of show interface ethernet XX description
+       to check for an existing description. If delineated by a set value,
+       preserve the existing value before updating.
+    '''
+    intf = 'Ethernet1'
+    delim = '***'
+    output = run_cmds(eapi, ['show interfaces %s description' % intf], format='json')[0]
+    description =str.split(output['interfaceDescriptions'][intf]['description'], delim)[0]
+
+    return  description
 
 
 def _search(data, regex):
