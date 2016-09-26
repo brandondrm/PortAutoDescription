@@ -120,7 +120,11 @@ TRANSPORT = 'socket'
 SWITCH_IP = '127.0.0.1'
 USERNAME = 'test'
 PASSWORD = 'test'
-#----------------------------------------------------------------
+
+DESC_DELIMITER = '==>'
+
+
+# ----------------------------------------------------------------
 
 def log(msg):
     '''Log message to stdout and logging file
@@ -177,6 +181,7 @@ def get_lldp_info(eapi):
             output = _parse_raw_neighbor(neigh)
             if output:
                 output['port'] = intf
+                output['staticDescription'] = _get_static_description(eapi, intf)
                 lldp_info.append(output)
 
     return lldp_info
@@ -195,6 +200,15 @@ def _get_local_interfaces(eapi):
 def _get_lldp_detail(eapi, intf):
     return run_cmds(eapi, ['show lldp neighbors %s detail' % intf],
                            format='text')[0]['output']
+
+def _get_static_description(eapi, intf):
+    """Use the JSON output of show interface ethernet XX description
+       to check for an existing description. If delineated by a set value,
+       preserve the existing value before updating.
+    """
+    output = run_cmds(eapi, ['show interfaces %s description' % intf], format='json')[0]
+    description = str.split(output['interfaceDescriptions'][intf]['description'], DESC_DELIMITER)[0]
+    return description
 
 def _search(data, regex):
     if data and regex:
@@ -279,8 +293,10 @@ def main():
 
     for i in neighbors:
         localIntf = i['port']
-        intfDesc = '*** Link to %s(%s)' % (i['neighborDevice'],
-                                           i['neighborPort'])
+        intfDesc = '%s %s %s(%s)' % (i['staticDescription'],
+                                     DESC_DELIMITER,
+                                     i['neighborDevice'],
+                                     i['neighborPort'])
         rc = run_cmds(eapi, ['enable',
                              'configure',
                              'interface %s' % localIntf,
