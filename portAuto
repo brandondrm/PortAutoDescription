@@ -203,7 +203,9 @@ def _get_lldp_detail(eapi, intf):
 
 def _get_static_description(eapi, intf):
     """Use the JSON output of show interface ethernet XX description
-       to check for an existing description. If delineated by a set value,
+       to check an existing description. Return everything   
+
+       If delineated by a set value,
        preserve the existing value before updating.
     """
     output = run_cmds(eapi, ['show interfaces %s description' % intf], format='json')[0]
@@ -296,7 +298,10 @@ def main():
         local_intf = i['port']
         intf_desc = '%s %s %s(%s)' % (
             i['staticDescription'], DESC_DELIMITER, i['neighborDevice'], i['neighborPort'])
-        rc = run_cmds(eapi, ['enable', 'configure', 'interface %s' % local_intf, 'description %s' % intf_desc])
+        rc = run_cmds(eapi, ['enable',
+                             'configure',
+                             'interface %s' % local_intf,
+                             'description %s' % intf_desc])
 
 
 if __name__ == '__main__':
